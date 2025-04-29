@@ -4,7 +4,7 @@
 
 <br>
 
-# DAMP - Dispositivo Auxiliar de Manutenção Preventiva/Preditiva
+# Ohmímetro por ADC
 
 ## Sumário
 
@@ -19,109 +19,65 @@
 
 ## Descrição
 
-Este projeto tem como objetivo principal: consolidar os conceitos estudados sobre desenvolvimento e programação de sistemas embarcados, estudados durante a fase 1 da residência tecnológica em sistemas embarcados, EmbarcaTech.
-
-Este projeto implementa um sistema embarcado para auxiliar na manutenção preventiva e preditiva de máquinas pesadas, utilizando a placa de desenvolvimento BitDogLab. O sistema monitora variáveis essenciais, como tempo de operação (horímetro), temperatura do motor, vibração e consumo de combustível, simuladas por componentes integrados da BitDogLab.
-
-A medição do horímetro permite calcular o tempo restante para a próxima manutenção preventiva e exibir alertas à medida que a manutenção se aproxima ou está vencida. Já os parâmetros de temperatura, vibração e consumo de combustível são analisados para detectar padrões que possam indicar falhas futuras, possibilitando a manutenção preditiva.
-
-Os alertas são exibidos em tempo real no display OLED e na matriz de LEDs 5x5, utilizando diferentes símbolos e cores para cada tipo de alerta. Além disso, sinais sonoros são emitidos via buzzer para reforçar as notificações. O sistema também conta com um mecanismo de liga/desliga para suspender medições e alertas quando a máquina estiver desligada.
-
-O desenvolvimento do projeto envolveu a implementação de interrupções e debouncing para os botões de controle, temporizadores e alarmes para os alertas, e a utilização de PWM para controle da frequência do buzzer. Todo o código foi estruturado para garantir eficiência e confiabilidade no funcionamento do sistema.
+Este projeto implementa um ohmímetro utilizando a placa de desenvolvimento BitDogLab e o microcontrolador RP2040, com capacidade de reconhecimento automático do código de cores de resistores. O sistema realiza a leitura da resistência de um resistor conectado, utilizando o conversor analógico-digital (ADC) para calcular o valor da resistência. Após calcular o valor medido, o projeto identifica o valor comercial mais próximo da série E24 (tolerância de 5%) e determina as três primeiras faixas de cores correspondentes ao resistor (1o dígito, 2o dígito e multiplicador). As informações são exibidas em um display OLED SSD1306, mostrando tanto o valor numérico da resistência quanto as cores das faixas de maneira textual.
 
 ## Funcionalidades Implementadas
 
-1. Manutenção Preventiva:
+1. Leitura do ADC:
 
-   - Mede o tempo de operação da máquina utilizando um temporizador.
-   - Calcula o tempo restante até a próxima manutenção preventiva.
-   - Exibe um alerta a cada 10 horas quando faltarem 100 horas para a manutenção.
-   - Exibe um alerta crítico a cada 10 horas após a manutenção estar vencida.
-   - O botão B é utilizado para confirmar a realização da manutenção:
-     -  Um clique inicia a confirmação.
-     -  Um segundo clique dentro de 2 segundos confirma a manutenção e adiciona 500 horas ao horímetro da próxima manutenção.
+   - O microcontrolador realiza a leitura da tensão no ponto médio do divisor de tensão através do ADC (GPIO 28). Esse valor é lido a cada 1ms e uma média é feita com os últimos 500 valores, isso facilita a definição do valor, diminuindo a interferência do ADC.
 
-2. Monitoramento da Temperatura do Motor:
+2. Cálculo da resistência:
 
-   - Mede a temperatura do motor (simulada pelo eixo Y do joystick).
-   - Exibe um alerta se a temperatura estiver entre 92°C e 95°C.
-   - Exibe um alerta crítico se a temperatura estiver entre 95°C e 100°C.
-   - Exibe um alerta crítico e desliga a máquina se a temperatura ultrapassar 100°C.
+   - O sistema calcula a resistência do resistor desconhecido através da fórmula de divisor de tensão. A fórmula final considerando os níveis de ADC (resolução de 12 bits = 0 a 4095): \
+$Rmed = \frac{Rcon \cdot ADCmed}{ADCmáx - ADCmed}$ \
+Onde:
+       - $Rcon$ é o valor da resistência do resistor conhecido,
+       - $ADCmed$ é o valor do ADC medido no ponto médio,
+       - $ADCmáx$ é o valor máximo (resolução) do ADC = 4095.
 
-3. Monitoramento do Consumo de Combustível:
+3. Identificação do valor comercial:
 
-   - Mede o nível de combustível no tanque (simulado pelo eixo X do joystick).
-   - Calcula o consumo de combustível da máquina em litros por hora (l/h).
-   - Exibe um alerta se o consumo ultrapassar 25 l/h.
+   - Após calcular o valor da resistência medida é chamada uma função que define o valor de resistência comercial da série E24 mais próximo do valor calculado.
     
-4. Monitoramento da Vibração do Motor:
+4. Determinação das faixas de cores:
 
-   - Mede o nível de vibração do motor (simulado pelo microfone).
-   - Exibe um alerta se a vibração ultrapassar 75.
+   - A partir do valor comercial, uma função define as faixas de cores para o 1o dígito, 2o dígito e multiplicador. Uma função auxiliar guarda o nome das cores por dígito, de acordo com o padrão de cores definido para resistores.
+![image](https://github.com/user-attachments/assets/9d444a6a-be26-4658-98d4-d511a0ff15c4)
   
-5. Exibição de Informações no Display:
+5. Exibição no Display OLED:
 
    - O display OLED exibe em tempo real:
-     - Horímetro da máquina.
-     - Horímetro da próxima manutenção preventiva.
-     - Temperatura do motor.
-     - Nível de vibração do motor.
-     - Consumo de combustível.
-     - Nível de combustível.
-     - Alertas ativos.
-
-6. Sistema de Alertas:
-
-   - Os alertas são exibidos na matriz de LEDs 5x5 e possuem diferentes símbolos e cores:
-     - Manutenção próxima: Exibe "P" em azul.
-     - Manutenção vencida: Exibe "P!" em lilás.
-     - Alerta preventivo: Exibe "!" em amarelo.
-     - Alerta crítico: Exibe "θ" em vermelho.
-   - Além do display e matriz de LEDs, os buzzers emitem sinais sonoros:
-     - 1000 Hz com a variação de tempo de duração do sinal sonoro para cada tipo de alerta.
-
-7. Sistema de Liga/Desliga:
-
-   - O botão A é responsável por ligar e desligar a máquina (LED Verde aceso para máquina ligada, LED Vermelho aceso para máquina desligada).
-   - Quando desligada, nenhuma medição é realizada, e os alertas são suspensos.
-
-8. Outros:
-
-   - Os botões foram implementados com interrupções e debouncing.
-   - Foi utilizado temporizadores e alarmes para implementar alertas.
-   - Foi utilizado PWM para configurar a frequência dos buzzers.
+     - Título;
+     - 3 faixas de cores,
+     - Valor medido da resistência desconhecida,
+     - Valor aproximado da série E24.
 
 ## Ferramentas utilizadas
 
 - **Simulador de eletrônica wokwi**: Ambiente utilizado para simular o hardware e validar o funcionamento do sistema.
 - **Ferramenta educacional BitDogLab (versão 6.3)**: Placa de desenvolvimento utilizada para programar o microcontrolador.
-- **Microcontrolador Raspberry Pi Pico W**: Gerencia a lógica do sistema, lê sensores e controla os atuadores.
-- **Joystick**: Simula temperatura (eixo Y) e nível de combustível (eixo X).
-- **Microfone**: Simula o sensor de vibração do motor.
-- **Buzzer**: Emite alertas sonoros de diferentes durações.
-- **Matriz de LEDs 5x5**: Exibe alertas visuais de manutenção e problemas no motor.
-- **LED RGB**: Indica o funcionamento da máquina.
-- **Display OLED SSD1306**: Apresenta os dados em tempo real (horímetro, temperatura, vibração, etc.).
-- **Botão A**: Liga e desliga a máquina.
-- **Botão B**: Confirma a manutenção preventiva realizada.
+- **Microcontrolador Raspberry Pi Pico W**: Responsável por realizar a leitura do ADC, o cálculo da resistência e a comunicação com o display OLED.
+- **Conversor analógico-digital(ADC)**: Utilizado para medir a tensão no ponto médio do divisor de tensão, permitindo o cálculo da resistência desconhecida.
+- **Display OLED SSD1306**: Apresenta os dados em tempo real (Faixa de cores, Resistência medida, etc.).
 - **Visual Studio Code (VS Code)**: IDE utilizada para o desenvolvimento do código com integração ao Pico SDK.
 - **Pico SDK**: Kit de desenvolvimento de software utilizado para programar o Raspberry Pi Pico W em linguagem C.
 - **Monitor serial do VS Code**: Ferramenta utilizada para realizar testes e depuração.
 
 ## Objetivos
 
-1. Consolidar os conceitos estudados sobre desenvolvimento e programação de sistemas embarcados, estudados durante a fase 1 da residência tecnológica em sistemas embarcados, EmbarcaTech.
-2. Fazer a medição do horímetro da máquina, comparar com o horímetro da próxima manutenção preventiva e emitir alerta caso necessário.
-3. Atualizar o horímetro da próxima manutenção preventiva.
-4. Fazer a medição da temperatura e vibração do motor e do consumo de combustível da máquina para manutenção preditiva.
-5. Exibir alertas para cada medição fora do padrão.
+1. Consolidar os conceitos estudados sobre desenvolvimento e programação de sistemas embarcados.
+2. Fazer a medição da resistência de um resistor desconhecido a partir do ADC e do princípio do divisor de tensão.
+3. Identificar o valor comercial da série E24 mais próximo da resistência calculada.
+4. Determinar as faixas de cores que representa o valor comercial do resistor.
+5. Exibir essas informações no display OLED.
 
 ## Instruções de uso
 
 1. **Clonar o Repositório**:
 
 ```bash
-git clone https://github.com/bigodinhojf/embarcatech_projeto_final.git
+git clone https://github.com/bigodinhojf/Embarcatech_F2T1_ohmimetro.git
 ```
 
 2. **Compilar e Carregar o Código**:
@@ -135,16 +91,12 @@ ninja
 3. **Interação com o Sistema**:
    - Conecte a placa ao computador.
    - Clique em run usando a extensão do raspberry pi pico.
-   - Clique no botão A para ligar a máquina.
-   - Aguarde um tempo para observar os alertas de manutenção preventiva.
-   - Clique no botão B duas vezes para confirmar uma manutenção e adicionar 500 horas para próxima preventiva.
-   - Mova o Joystick para cima e para baixo para observar a simulção do sensor de temperatura, observe os alertas.
-   - Mova o Joystick para direira e para esquerda para observar a simulação do sensor de nível de combustível e alteração do consumo, observe os alertas.
-   - Emita sons variados perto do microfone para observar a simulação do sensor de vibração, observe os alertas.
+   - Faça a montagem do circuito conforme mostrado na ficha do projeto.
+   - Faça a leitura das informações no display OLED.
 
 ## Vídeo de apresentação
 
-O vídeo apresentando o projeto pode ser assistido [clicando aqui](https://youtu.be/1mPumZdqNQI).
+O vídeo apresentando o projeto pode ser assistido [clicando aqui](https://youtu.be/5bqItWLqsVY).
 
 ## Aluno e desenvolvedor do projeto
 
